@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Inventario</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+
+<header class="barra">
+    <h1>Inventario</h1>
+    <p class="resumen" id="resumen">Cargando…</p>
+</header>
+
+<main class="tablero">
+
+    <!--Panel del formulario-->
+    <section class="panel" aria-labelledby="titulo-form">
+        <h2 id="titulo-form">Nuevo producto</h2>
+
+        <div class="campo">
+            <label for="nombre">Nombre</label>
+            <input id="nombre" type="text" autocomplete="off" placeholder="Guantes de nitrilo talla M">
+            <small class="error" id="error-nombre"></small>
+        </div>
+
+        <div class="campo">
+            <label for="categoria">Categoría</label>
+            <input id="categoria" type="text" autocomplete="off" list="categorias" placeholder="Dotación">
+            <datalist id="categorias"></datalist>
+            <small class="error" id="error-categoria"></small>
+        </div>
+
+        <div class="fila-doble">
+            <div class="campo">
+                <label for="precio">Precio</label>
+                <input id="precio" type="number" min="0" step="0.01" placeholder="0.00">
+                <small class="error" id="error-precio"></small>
+            </div>
+            <div class="campo">
+                <label for="cantidad">Cantidad</label>
+                <input id="cantidad" type="number" min="0" step="1" placeholder="0">
+                <small class="error" id="error-cantidad"></small>
+            </div>
+        </div>
+
+        <div class="acciones">
+            <button type="button" class="boton primario" id="btn-guardar">Guardar producto</button>
+            <button type="button" class="boton plano oculto" id="btn-cancelar">Cancelar edición</button>
+        </div>
+
+        <p class="aviso" id="aviso" role="status"></p>
+    </section>
+
+    <!-- ---------- Panel de la tabla ---------- -->
+    <section class="panel panel-tabla" aria-labelledby="titulo-tabla">
+        <div class="cabecera-tabla">
+            <h2 id="titulo-tabla">Productos registrados</h2>
+            <div class="buscador">
+                <input id="busqueda" type="search" autocomplete="off"
+                       placeholder="Buscar por nombre o categoría">
+            </div>
+        </div>
+
+        <div class="contenedor-tabla">
+            <table>
+                <thead>
+                <tr>
+                    <th class="col-id">Id</th>
+                    <th>Nombre</th>
+                    <th>Categoría</th>
+                    <th class="num">Precio</th>
+                    <th class="num">Cantidad</th>
+                    <th class="col-acciones"></th>
+                </tr>
+                </thead>
+                <tbody id="cuerpo-tabla"></tbody>
+            </table>
+            <p class="vacio oculto" id="vacio"></p>
+        </div>
+    </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
