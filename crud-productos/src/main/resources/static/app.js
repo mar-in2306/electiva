@@ -1,7 +1,15 @@
 const API = "/api/productos";
+const STOCK_BAJO = 5;     // a partir de esta cantidad (exclusive) se considera stock sano
 
 const $ = (id) => document.getElementById(id);
 const campos = ["nombre", "categoria", "precio", "cantidad"];
+
+const ICONOS = {
+    editar: '<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    borrar: '<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>',
+    ok: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>',
+    error: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>',
+};
 
 let idEnEdicion = null;   // null = estamos creando; un número = estamos editando
 let temporizador = null;  // para no llamar al servidor en cada tecla
@@ -28,20 +36,28 @@ function pintar(productos, texto) {
         const fila = document.createElement("tr");
         if (p.id === idEnEdicion) fila.classList.add("editando");
 
-        fila.appendChild(celda(p.id, "col-id"));
-        fila.appendChild(celda(p.nombre));
-        fila.appendChild(celda(p.categoria));
+        fila.appendChild(celda("#" + p.id, "col-id"));
+        fila.appendChild(celda(p.nombre, "nombre"));
+
+        const cat = document.createElement("td");
+        const etiqueta = document.createElement("span");
+        etiqueta.className = "etiqueta";
+        etiqueta.textContent = p.categoria;
+        cat.appendChild(etiqueta);
+        fila.appendChild(cat);
+
         fila.appendChild(celda(moneda(p.precio), "num"));
-        fila.appendChild(celda(p.cantidad, "num"));
+        fila.appendChild(celda(numero(p.cantidad), "num"));
+        fila.appendChild(celdaEstado(p.cantidad));
 
         const acciones = document.createElement("td");
         acciones.className = "col-acciones";
         const grupo = document.createElement("div");
 
-        const editar = boton("Editar", "mini");
-        editar.onclick = () => llenarFormulario(p);
+        const editar = botonIcono(ICONOS.editar, "Editar " + p.nombre);
+        editar.onclick = () => abrirPanel(p);
 
-        const borrar = boton("Eliminar", "mini peligro");
+        const borrar = botonIcono(ICONOS.borrar, "Eliminar " + p.nombre, "peligro");
         borrar.onclick = () => confirmarBorrado(p, grupo);
 
         grupo.append(editar, borrar);
@@ -50,15 +66,12 @@ function pintar(productos, texto) {
         cuerpo.appendChild(fila);
     });
 
-    const vacio = $("vacio");
-    vacio.classList.toggle("oculto", productos.length > 0);
-    vacio.textContent = texto
+    $("vacio").classList.toggle("oculto", productos.length > 0);
+    $("vacio-texto").textContent = texto
         ? `Ningún producto coincide con "${texto}".`
-        : "Todavía no hay productos. Registra el primero con el formulario.";
+        : "Todavía no hay productos. Crea el primero con «Nuevo producto».";
 
-    const unidades = productos.reduce((suma, p) => suma + p.cantidad, 0);
-    $("resumen").textContent =
-        `${productos.length} producto(s) · ${unidades} unidades en existencia`;
+    actualizarMetricas(productos);
 
     // sugerencias de categoría para el formulario
     $("categorias").innerHTML = "";
@@ -67,6 +80,18 @@ function pintar(productos, texto) {
         op.value = c;
         $("categorias").appendChild(op);
     });
+}
+
+function actualizarMetricas(productos) {
+    const unidades = productos.reduce((suma, p) => suma + p.cantidad, 0);
+    const valor = productos.reduce((suma, p) => suma + Number(p.precio) * p.cantidad, 0);
+    const bajos = productos.filter((p) => p.cantidad <= STOCK_BAJO).length;
+
+    $("m-productos").textContent = numero(productos.length);
+    $("m-unidades").textContent = numero(unidades);
+    $("m-valor").textContent = moneda(valor);
+    $("m-bajo").textContent = numero(bajos);
+    $("resumen").textContent = productos.length;
 }
 
 /* --------------------------------------------------------- guardar/editar */
@@ -81,11 +106,17 @@ async function guardar() {
     };
 
     const creando = idEnEdicion === null;
-    const respuesta = await fetch(creando ? API : `${API}/${idEnEdicion}`, {
-        method: creando ? "POST" : "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(producto),
-    });
+    let respuesta;
+    try {
+        respuesta = await fetch(creando ? API : `${API}/${idEnEdicion}`, {
+            method: creando ? "POST" : "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(producto),
+        });
+    } catch (e) {
+        avisar("No se pudo conectar con el servidor.", true);
+        return;
+    }
 
     if (respuesta.status === 400) {
         const errores = await respuesta.json();
@@ -96,7 +127,6 @@ async function guardar() {
                 $("error-" + campo).textContent = mensaje;
             }
         });
-        avisar("Revisa los campos marcados.", true);
         return;
     }
 
@@ -105,44 +135,54 @@ async function guardar() {
         return;
     }
 
-    avisar(creando ? "Producto guardado." : "Cambios guardados.");
-    limpiarFormulario();
+    avisar(creando ? "Producto creado correctamente." : "Cambios guardados.");
+    cerrarPanel();
     cargar();
 }
 
-function llenarFormulario(p) {
-    idEnEdicion = p.id;
-    $("nombre").value = p.nombre;
-    $("categoria").value = p.categoria;
-    $("precio").value = p.precio;
-    $("cantidad").value = p.cantidad;
-
-    $("titulo-form").textContent = `Editando el producto ${p.id}`;
-    $("btn-guardar").textContent = "Guardar cambios";
-    $("btn-cancelar").classList.remove("oculto");
+/* --------------------------------------------------------- panel lateral */
+function abrirPanel(p = null) {
     limpiarErrores();
-    $("nombre").focus();
-    cargar();
+    idEnEdicion = p ? p.id : null;
+
+    $("nombre").value = p ? p.nombre : "";
+    $("categoria").value = p ? p.categoria : "";
+    $("precio").value = p ? p.precio : "";
+    $("cantidad").value = p ? p.cantidad : "";
+
+    $("titulo-form").textContent = p ? "Editar producto" : "Nuevo producto";
+    $("sub-form").textContent = p
+        ? `Modificando el producto #${p.id}.`
+        : "Completa la información del producto.";
+    $("btn-guardar").textContent = p ? "Guardar cambios" : "Crear producto";
+
+    document.body.classList.add("panel-abierto");
+    $("panel").setAttribute("aria-hidden", "false");
+    setTimeout(() => $("nombre").focus(), 150);
+    if (p) cargar();
 }
 
-function limpiarFormulario() {
+function cerrarPanel() {
+    const estabaEditando = idEnEdicion !== null;
     idEnEdicion = null;
-    campos.forEach((c) => ($(c).value = ""));
-    $("titulo-form").textContent = "Nuevo producto";
-    $("btn-guardar").textContent = "Guardar producto";
-    $("btn-cancelar").classList.add("oculto");
+    document.body.classList.remove("panel-abierto");
+    $("panel").setAttribute("aria-hidden", "true");
     limpiarErrores();
+    if (estabaEditando) cargar();
 }
 
 /* ------------------------------------------------------------- eliminar */
 function confirmarBorrado(p, grupo) {
     grupo.innerHTML = "";
 
-    const si = boton("Sí, eliminar", "mini peligro");
+    const no = boton("Cancelar", "mini");
+    no.onclick = () => cargar();
+
+    const si = boton("Eliminar", "mini peligro");
     si.onclick = async () => {
         const respuesta = await fetch(`${API}/${p.id}`, { method: "DELETE" });
         if (respuesta.ok) {
-            if (idEnEdicion === p.id) limpiarFormulario();
+            if (idEnEdicion === p.id) cerrarPanel();
             avisar(`"${p.nombre}" fue eliminado.`);
             cargar();
         } else {
@@ -150,10 +190,7 @@ function confirmarBorrado(p, grupo) {
         }
     };
 
-    const no = boton("No", "mini");
-    no.onclick = () => cargar();
-
-    grupo.append(si, no);
+    grupo.append(no, si);
     si.focus();
 }
 
@@ -165,6 +202,23 @@ function celda(valor, clase) {
     return td;
 }
 
+function celdaEstado(cantidad) {
+    const td = document.createElement("td");
+    const span = document.createElement("span");
+    if (cantidad === 0) {
+        span.className = "estado agotado";
+        span.textContent = "Agotado";
+    } else if (cantidad <= STOCK_BAJO) {
+        span.className = "estado bajo";
+        span.textContent = "Stock bajo";
+    } else {
+        span.className = "estado ok";
+        span.textContent = "Disponible";
+    }
+    td.appendChild(span);
+    return td;
+}
+
 function boton(texto, clase) {
     const b = document.createElement("button");
     b.type = "button";
@@ -173,19 +227,41 @@ function boton(texto, clase) {
     return b;
 }
 
+function botonIcono(svg, etiqueta, extra = "") {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = ("icono " + extra).trim();
+    b.innerHTML = svg;
+    b.title = etiqueta;
+    b.setAttribute("aria-label", etiqueta);
+    return b;
+}
+
 function moneda(valor) {
     return new Intl.NumberFormat("es-CO", {
         style: "currency",
         currency: "COP",
-        maximumFractionDigits: 2,
+        maximumFractionDigits: 0,
     }).format(valor);
 }
 
+function numero(valor) {
+    return new Intl.NumberFormat("es-CO").format(valor);
+}
+
 function avisar(mensaje, esError = false) {
-    const aviso = $("aviso");
-    aviso.textContent = mensaje;
-    aviso.classList.toggle("malo", esError);
-    setTimeout(() => (aviso.textContent = ""), 4000);
+    const toast = document.createElement("div");
+    toast.className = "toast" + (esError ? " malo" : "");
+    toast.innerHTML = esError ? ICONOS.error : ICONOS.ok;
+    const texto = document.createElement("span");
+    texto.textContent = mensaje;
+    toast.appendChild(texto);
+    $("toasts").appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add("saliendo");
+        setTimeout(() => toast.remove(), 200);
+    }, 3500);
 }
 
 function limpiarErrores() {
@@ -196,8 +272,19 @@ function limpiarErrores() {
 }
 
 /* ---------------------------------------------------------------- eventos */
+$("btn-nuevo").onclick = () => abrirPanel();
 $("btn-guardar").onclick = guardar;
-$("btn-cancelar").onclick = limpiarFormulario;
+$("btn-cancelar").onclick = cerrarPanel;
+$("btn-cerrar").onclick = cerrarPanel;
+$("velo").onclick = cerrarPanel;
+$("formulario").addEventListener("submit", (e) => {
+    e.preventDefault();
+    guardar();
+});
+
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && document.body.classList.contains("panel-abierto")) cerrarPanel();
+});
 
 $("busqueda").addEventListener("input", () => {
     clearTimeout(temporizador);
@@ -206,7 +293,10 @@ $("busqueda").addEventListener("input", () => {
 
 campos.forEach((c) =>
     $(c).addEventListener("keydown", (e) => {
-        if (e.key === "Enter") guardar();
+        if (e.key === "Enter") {
+            e.preventDefault();
+            guardar();
+        }
     })
 );
 

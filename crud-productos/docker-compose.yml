@@ -1,0 +1,36 @@
+services:
+
+  # La app en Docker usa el MySQL instalado en tu PC (el mismo que ves en Workbench),
+  # así que todo lo que cambies en http://localhost:8080 queda en esa base.
+  app:
+    build: .
+    container_name: inventario-app
+    restart: unless-stopped
+    environment:
+      DB_URL: ${DB_URL:-jdbc:mysql://host.docker.internal:3306/inventario?createDatabaseIfNotExist=true&serverTimezone=America/Bogota&useSSL=false&allowPublicKeyRetrieval=true}
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en el archivo .env}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${APP_PORT:-8080}:8080"   # cambia APP_PORT si el 8080 está ocupado
+
+  # MySQL dentro de Docker (opcional). Solo se levanta con:
+  #   docker compose --profile mysql-docker up -d
+  # y poniendo en .env: DB_URL=jdbc:mysql://mysql:3306/inventario?serverTimezone=America/Bogota&useSSL=false&allowPublicKeyRetrieval=true
+  mysql:
+    image: mysql:8.4
+    container_name: inventario-mysql
+    profiles: ["mysql-docker"]
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+      MYSQL_DATABASE: inventario
+      TZ: America/Bogota
+    ports:
+      - "3307:3306"   # 3307 en tu PC para no chocar con el MySQL local
+    volumes:
+      - mysql-datos:/var/lib/mysql
+
+volumes:
+  mysql-datos:

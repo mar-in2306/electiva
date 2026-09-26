@@ -6,31 +6,110 @@
     <title>Inventario</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
 
-<header class="barra">
-    <h1>Inventario</h1>
-    <p class="resumen" id="resumen">Cargando…</p>
+<!-- Barra superior -->
+<header class="topbar">
+    <div class="marca">
+        <span class="logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>
+        </span>
+        <span class="marca-texto">Inventario</span>
+    </div>
+    <button type="button" class="boton primario" id="btn-nuevo">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        Nuevo producto
+    </button>
 </header>
 
-<main class="tablero">
+<main class="contenido">
 
-    <!--Panel del formulario-->
-    <section class="panel" aria-labelledby="titulo-form">
-        <h2 id="titulo-form">Nuevo producto</h2>
+    <div class="encabezado">
+        <h1>Productos</h1>
+        <p class="subtitulo">Gestiona el catálogo y las existencias de tu inventario.</p>
+    </div>
 
+    <!-- Métricas -->
+    <section class="metricas" aria-label="Resumen">
+        <article class="metrica">
+            <span class="metrica-etiqueta">Productos</span>
+            <span class="metrica-valor" id="m-productos">—</span>
+        </article>
+        <article class="metrica">
+            <span class="metrica-etiqueta">Unidades en stock</span>
+            <span class="metrica-valor" id="m-unidades">—</span>
+        </article>
+        <article class="metrica">
+            <span class="metrica-etiqueta">Valor del inventario</span>
+            <span class="metrica-valor" id="m-valor">—</span>
+        </article>
+        <article class="metrica">
+            <span class="metrica-etiqueta">Stock bajo</span>
+            <span class="metrica-valor" id="m-bajo">—</span>
+        </article>
+    </section>
+
+    <!-- Tabla -->
+    <section class="tarjeta" aria-labelledby="titulo-tabla">
+        <div class="barra-tabla">
+            <h2 id="titulo-tabla">Catálogo <span class="contador" id="resumen"></span></h2>
+            <label class="buscador">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <input id="busqueda" type="search" autocomplete="off"
+                       placeholder="Buscar por nombre o categoría" aria-label="Buscar productos">
+            </label>
+        </div>
+
+        <div class="contenedor-tabla">
+            <table>
+                <thead>
+                <tr>
+                    <th class="col-id">ID</th>
+                    <th>Producto</th>
+                    <th>Categoría</th>
+                    <th class="num">Precio</th>
+                    <th class="num">Cantidad</th>
+                    <th>Estado</th>
+                    <th class="col-acciones"><span class="sr">Acciones</span></th>
+                </tr>
+                </thead>
+                <tbody id="cuerpo-tabla"></tbody>
+            </table>
+
+            <div class="vacio oculto" id="vacio">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>
+                <p id="vacio-texto"></p>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- Panel lateral del formulario -->
+<div class="velo" id="velo"></div>
+<aside class="panel-lateral" id="panel" aria-labelledby="titulo-form" aria-hidden="true">
+    <div class="panel-cabecera">
+        <div>
+            <h2 id="titulo-form">Nuevo producto</h2>
+            <p class="panel-sub" id="sub-form">Completa la información del producto.</p>
+        </div>
+        <button type="button" class="icono" id="btn-cerrar" aria-label="Cerrar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+    </div>
+
+    <form class="panel-cuerpo" id="formulario" novalidate>
         <div class="campo">
             <label for="nombre">Nombre</label>
-            <input id="nombre" type="text" autocomplete="off" placeholder="Guantes de nitrilo talla M">
+            <input id="nombre" type="text" autocomplete="off" placeholder="Ej. Guantes de nitrilo talla M">
             <small class="error" id="error-nombre"></small>
         </div>
 
         <div class="campo">
             <label for="categoria">Categoría</label>
-            <input id="categoria" type="text" autocomplete="off" list="categorias" placeholder="Dotación">
+            <input id="categoria" type="text" autocomplete="off" list="categorias" placeholder="Ej. Dotación">
             <datalist id="categorias"></datalist>
             <small class="error" id="error-categoria"></small>
         </div>
@@ -38,7 +117,10 @@
         <div class="fila-doble">
             <div class="campo">
                 <label for="precio">Precio</label>
-                <input id="precio" type="number" min="0" step="0.01" placeholder="0.00">
+                <div class="con-prefijo">
+                    <span>$</span>
+                    <input id="precio" type="number" min="0" step="0.01" placeholder="0">
+                </div>
                 <small class="error" id="error-precio"></small>
             </div>
             <div class="campo">
@@ -47,44 +129,16 @@
                 <small class="error" id="error-cantidad"></small>
             </div>
         </div>
+    </form>
 
-        <div class="acciones">
-            <button type="button" class="boton primario" id="btn-guardar">Guardar producto</button>
-            <button type="button" class="boton plano oculto" id="btn-cancelar">Cancelar edición</button>
-        </div>
+    <div class="panel-pie">
+        <button type="button" class="boton plano" id="btn-cancelar">Cancelar</button>
+        <button type="button" class="boton primario" id="btn-guardar">Guardar producto</button>
+    </div>
+</aside>
 
-        <p class="aviso" id="aviso" role="status"></p>
-    </section>
-
-    <!-- ---------- Panel de la tabla ---------- -->
-    <section class="panel panel-tabla" aria-labelledby="titulo-tabla">
-        <div class="cabecera-tabla">
-            <h2 id="titulo-tabla">Productos registrados</h2>
-            <div class="buscador">
-                <input id="busqueda" type="search" autocomplete="off"
-                       placeholder="Buscar por nombre o categoría">
-            </div>
-        </div>
-
-        <div class="contenedor-tabla">
-            <table>
-                <thead>
-                <tr>
-                    <th class="col-id">Id</th>
-                    <th>Nombre</th>
-                    <th>Categoría</th>
-                    <th class="num">Precio</th>
-                    <th class="num">Cantidad</th>
-                    <th class="col-acciones"></th>
-                </tr>
-                </thead>
-                <tbody id="cuerpo-tabla"></tbody>
-            </table>
-            <p class="vacio oculto" id="vacio"></p>
-        </div>
-    </section>
-
-</main>
+<!-- Notificaciones -->
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
 <script src="app.js"></script>
 </body>
